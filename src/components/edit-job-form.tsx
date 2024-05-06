@@ -1,52 +1,57 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Form } from "./ui/form";
-import { Button } from "@/components/ui/button";
-import { CustomFormField, CustomFormSelect } from "./form-components";
+import { getSingleJobAction, updateJobAction } from "@/lib/actions";
 import {
   CreateAndEditJobType,
   JobMode,
   JobStatus,
   createAndEditJobSchema,
 } from "@/lib/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { createJobAction } from "@/lib/actions";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { Form } from "./ui/form";
+import { CustomFormField, CustomFormSelect } from "./form-components";
+import { Button } from "./ui/button";
 
-export function CreateJobForm() {
-  const form = useForm<CreateAndEditJobType>({
-    resolver: zodResolver(createAndEditJobSchema),
-    defaultValues: {
-      position: "",
-      company: "",
-      location: "",
-      status: JobStatus.Pending,
-      mode: JobMode.FullTime,
-    },
-  });
-
+export default function EditJobForm({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient();
   const router = useRouter();
 
+  const { data } = useQuery({
+    queryKey: ["job", jobId],
+    queryFn: () => getSingleJobAction(jobId),
+  });
+
   const { mutate, isPending } = useMutation({
-    mutationFn: (values: CreateAndEditJobType) => createJobAction(values),
+    mutationFn: (values: CreateAndEditJobType) =>
+      updateJobAction(jobId, values),
     onSuccess: (data) => {
       if (!data) {
-        toast("There was an error");
+        toast("there was an error");
         return;
       }
 
-      toast("Job created");
+      toast("Job updated");
 
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["job", jobId] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
-      queryClient.invalidateQueries({ queryKey: ["charts"] });
 
-      // form.reset()
       router.push("/jobs");
+    },
+  });
+
+  const form = useForm<CreateAndEditJobType>({
+    resolver: zodResolver(createAndEditJobSchema),
+    defaultValues: {
+      position: data?.position || "",
+      company: data?.company || "",
+      location: data?.location || "",
+      status: (data?.status as JobStatus) || JobStatus.Pending,
+      mode: (data?.mode as JobMode) || JobMode.FullTime,
     },
   });
 
@@ -56,7 +61,7 @@ export function CreateJobForm() {
 
   return (
     <>
-      <h2 className="capitalize font-semibold text-4xl mb-4">Add job</h2>
+      <h2 className="capitalize font-semibold text-4xl mb-4">Edit job</h2>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -79,7 +84,7 @@ export function CreateJobForm() {
               labelText="job mode"
             />
             <Button type="submit" className="self-end" disabled={isPending}>
-              {isPending ? "Creating..." : "Create job"}
+              {isPending ? "Editing..." : "Edit job"}
             </Button>
           </div>
         </form>

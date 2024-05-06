@@ -32,7 +32,7 @@ export default function Header() {
 
       <div className="flex items-center gap-4">
         <Button size="icon" onClick={() => toggleTheme()}>
-          <Lightbulb />
+          {userTheme === "dark" ? <Lightbulb /> : <LightbulbOff />}
         </Button>
 
         <UserButton afterSignOutUrl="/" />
